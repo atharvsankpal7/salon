@@ -12,31 +12,37 @@ if (!supabaseUrl || !supabaseAnonKey) {
   console.error('Missing Supabase environment variables');
   process.exit(1);
 }
+console.log(supabaseUrl, supabaseAnonKey);
 
 const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function createAdminUser() {
   try {
-    // First, try to sign in to check if user exists
+    // First, check if the user exists in the auth system
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({
-      email: 'admin@smartsalon.com',
+      email: 'atharvsankpal799@gmail.com',
       password: 'Admin@123',
     });
 
-    if (signInError) {
-      console.log(signInError)      
+    if (!signInError) {
+      console.log('Admin user already exists and credentials are valid!');
+      console.log('Email: atharvsankpal799@gmail.com');
+      console.log('Password: Admin@123');
       return;
     }
 
     // If sign in fails, create the user
     const { data: authData, error: authError } = await supabase.auth.signUp({
-      email: 'admin@smartsalon.com',
+      email: 'atharvsankpal799@gmail.com',
       password: 'Admin@123',
     });
 
     if (authError) {
-      console.error('Error creating auth user:', authError.message);
-      return;
+      if (authError.message === 'User already registered') {
+        console.log('Admin user exists but password might be different.');
+        return;
+      }
+      throw authError;
     }
 
     if (!authData.user) {
@@ -44,23 +50,32 @@ async function createAdminUser() {
       return;
     }
 
-    // Then, create the corresponding record in public.users
-    const { error: userError } = await supabase
+    // Check if user record exists in the users table
+    const { data: existingUser } = await supabase
       .from('users')
-      .insert({
-        id: authData.user.id,
-        email: 'admin@smartsalon.com',
-        full_name: 'Admin User',
-        role: 'admin',
-      });
+      .select('id')
+      .eq('email', 'atharvsankpal799@gmail.com')
+      .single();
 
-    if (userError) {
-      console.error('Error creating user record:', userError.message);
-      return;
+    if (!existingUser) {
+      // Create the user record if it doesn't exist
+      const { error: userError } = await supabase
+        .from('users')
+        .insert({
+          id: authData.user.id,
+          email: 'atharvsankpal799@gmail.com',
+          full_name: 'Admin User',
+          role: 'admin',
+        });
+
+      if (userError) {
+        console.error('Error creating user record:', userError.message);
+        return;
+      }
     }
 
-    console.log('Admin user created successfully!');
-    console.log('Email: admin@smartsalon.com');
+    console.log('Admin user setup completed successfully!');
+    console.log('Email: atharvsankpal799@gmail.com');
     console.log('Password: Admin@123');
   } catch (error) {
     console.error('Error:', error);
